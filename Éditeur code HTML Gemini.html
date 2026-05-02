@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Éditeur HTML Interactif</title>
+    
+    <!-- Utilisation de Tailwind CSS pour un design moderne, responsive et aux couleurs bleu/blanc -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Icônes pour les boutons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Configuration des couleurs personnalisées pour rester strictement dans le thème Bleu/Blanc -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#1d4ed8', // Bleu fort
+                        'primary-light': '#eff6ff', // Bleu très clair (fond)
+                        'secondary': '#3b82f6', // Bleu moyen
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Personnalisation de la barre de défilement pour la zone de code */
+        textarea::-webkit-scrollbar {
+            width: 10px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: #eff6ff; 
+            border-radius: 0 8px 8px 0;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background: #93c5fd; 
+            border-radius: 10px;
+        }
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6; 
+        }
+    </style>
+</head>
+<body class="bg-primary-light min-h-screen flex flex-col font-sans">
+
+    <!-- En-tête de l'application -->
+    <header class="bg-primary text-white shadow-lg py-4 px-6 sm:px-10 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <i class="fa-brands fa-html5 text-3xl"></i>
+            <h1 class="text-xl sm:text-2xl font-bold tracking-wide">Studio HTML</h1>
+        </div>
+        <div class="text-sm opacity-80 hidden sm:block">
+            Éditeur et Générateur en Temps Réel
+        </div>
+    </header>
+
+    <!-- Conteneur Principal -->
+    <main class="flex-grow flex flex-col p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full gap-6">
+        
+        <!-- Section d'Édition (Console de saisie) -->
+        <section class="bg-white rounded-xl shadow-md border border-blue-100 flex flex-col overflow-hidden">
+            <div class="bg-blue-50 border-b border-blue-100 px-4 py-3 flex justify-between items-center">
+                <h2 class="text-primary font-semibold flex items-center gap-2">
+                    <i class="fa-solid fa-code"></i> Code Source HTML
+                </h2>
+                <!-- Boutons d'action rapides -->
+                <div class="flex gap-2">
+                    <button onclick="clearCode()" class="text-sm text-blue-600 hover:text-red-500 transition-colors px-2 py-1 rounded" title="Effacer tout">
+                        <i class="fa-solid fa-trash-can"></i> Effacer
+                    </button>
+                </div>
+            </div>
+            
+            <textarea id="code-editor" class="w-full h-64 sm:h-80 p-4 font-mono text-sm sm:text-base text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-inset resize-y" spellcheck="false" placeholder="<!-- Tapez votre code HTML, CSS et JS ici -->"></textarea>
+            
+            <!-- Barre de contrôles principale -->
+            <div class="bg-blue-50 border-t border-blue-100 px-4 py-4 flex flex-wrap gap-3 sm:gap-4 justify-between items-center">
+                <button onclick="generatePreview()" class="flex-grow sm:flex-grow-0 bg-primary hover:bg-blue-800 text-white font-medium py-2 px-6 rounded-lg shadow transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play"></i> Générer l'aperçu
+                </button>
+                
+                <button onclick="downloadCode()" class="flex-grow sm:flex-grow-0 bg-white border-2 border-primary text-primary hover:bg-blue-50 font-medium py-2 px-6 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-download"></i> Télécharger (.html)
+                </button>
+            </div>
+        </section>
+
+        <!-- Section d'Aperçu (Console de résultat) -->
+        <section class="bg-white rounded-xl shadow-md border border-blue-100 flex flex-col overflow-hidden flex-grow">
+            <div class="bg-blue-50 border-b border-blue-100 px-4 py-3 flex justify-between items-center">
+                <h2 class="text-primary font-semibold flex items-center gap-2">
+                    <i class="fa-solid fa-desktop"></i> Aperçu du Résultat
+                </h2>
+                <span id="update-badge" class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full opacity-0 transition-opacity duration-300">Mis à jour !</span>
+            </div>
+            
+            <!-- L'iframe isole le code de l'utilisateur du reste de l'application -->
+            <div class="p-2 sm:p-4 bg-white flex-grow min-h-[300px] h-[50vh]">
+                <iframe id="preview-frame" class="w-full h-full border-2 border-dashed border-blue-200 rounded-lg bg-white" title="Aperçu du code"></iframe>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Pied de page -->
+    <footer class="bg-white border-t border-blue-100 text-center py-4 text-sm text-blue-600">
+        <p>Conçu en Bleu et Blanc - Application Responsive</p>
+    </footer>
+
+    <!-- Logique de l'application -->
+    <script>
+        // Élément DOM
+        const editor = document.getElementById('code-editor');
+        const previewFrame = document.getElementById('preview-frame');
+        const updateBadge = document.getElementById('update-badge');
+
+        // Code de base par défaut pour guider l'utilisateur
+        const defaultCode = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ma Page Web</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f8ff;
+            color: #003366;
+            text-align: center;
+            padding: 2rem;
+        }
+        .container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: auto;
+            border-top: 5px solid #1d4ed8;
+        }
+        h1 { color: #1d4ed8; }
+        button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        button:hover { background-color: #1d4ed8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Bonjour !</h1>
+        <p>Bienvenue dans votre nouvel éditeur HTML.</p>
+        <p>Modifiez le code au-dessus et cliquez sur <b>Générer l'aperçu</b> pour voir le résultat ici.</p>
+        <button onclick="alert('L\\'intégration JavaScript fonctionne !')">Cliquez-moi</button>
+    </div>
+</body>
+</html>`;
+
+        // Initialisation de l'éditeur avec le code par défaut
+        window.onload = () => {
+            editor.value = defaultCode;
+            generatePreview(false); // Génère l'aperçu initial sans afficher le badge "Mis à jour"
+        };
+
+        // Fonction pour générer l'aperçu dans l'iframe
+        function generatePreview(showBadge = true) {
+            const code = editor.value;
+            
+            // Accès au document interne de l'iframe
+            const iframeDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+            
+            // Écriture du code utilisateur dans l'iframe
+            iframeDoc.open();
+            iframeDoc.write(code);
+            iframeDoc.close();
+
+            // Animation visuelle de confirmation (Optionnelle)
+            if(showBadge) {
+                updateBadge.classList.remove('opacity-0');
+                updateBadge.classList.add('opacity-100');
+                setTimeout(() => {
+                    updateBadge.classList.remove('opacity-100');
+                    updateBadge.classList.add('opacity-0');
+                }, 2000);
+            }
+        }
+
+        // Fonction pour télécharger le code au format .html
+        function downloadCode() {
+            const code = editor.value;
+            
+            if (!code.trim()) {
+                alert("Le champ de code est vide. Veuillez écrire du code avant de télécharger.");
+                return;
+            }
+
+            // Création d'un "Blob" (objet de données brutes) contenant le texte HTML
+            const blob = new window.Blob([code], { type: 'text/html' });
+            
+            // Création d'une URL temporaire pointant vers ce Blob
+            const url = window.URL.createObjectURL(blob);
+            
+            // Création d'un lien invisible pour forcer le téléchargement
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'mon_projet.html'; // Nom du fichier par défaut
+            
+            // Simulation du clic et nettoyage
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Fonction pour vider la zone de saisie et l'aperçu
+        function clearCode() {
+            // Demande de confirmation personnalisée (via un modal simple simulé par confirm)
+            if(confirm("Êtes-vous sûr de vouloir effacer tout le code ?")) {
+                editor.value = '';
+                generatePreview(false);
+            }
+        }
+        
+        // Bonus : Permettre la tabulation dans le champ de texte
+        editor.addEventListener('keydown', function(e) {
+            if (e.key == 'Tab') {
+                e.preventDefault();
+                var start = this.selectionStart;
+                var end = this.selectionEnd;
+                // Insère 4 espaces à la position du curseur
+                this.value = this.value.substring(0, start) + "    " + this.value.substring(end);
+                this.selectionStart = this.selectionEnd = start + 4;
+            }
+        });
+    </script>
+</body>
+</html>
